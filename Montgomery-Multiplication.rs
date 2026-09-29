@@ -70,7 +70,7 @@ fn main(){
     a=a*r%n;
     b=b*r%n; // we get a=618493725, b=3180227795
     //println!("a_bar * b_bar={}",a*b);
-    let c=reduction(a*b, k, r, n);
+    let c=reduction(reduction(a*b, k, r, n), k, r, n);
     println!("a*b%n={c}");
     
 }
