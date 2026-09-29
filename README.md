@@ -1,6 +1,7 @@
 # Montgomery-Multiplication
 This is a method for performing fast modular multiplication by transforming numbers into a special Montgomery form, avoiding costly division operations.
 
+The code is written in Rust
 
 // This is Montgomery Multiplication: The aim is to calculate the product a.b%p for two integers a and b modulo p, where p is a large prime. 
 // Why: It is costly to apply %p in the code
