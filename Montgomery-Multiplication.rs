@@ -54,8 +54,8 @@
 
 fn main(){
     let n: u64 = 4294967291; // largest prime less than 2^{32}-1
-    let mut r: u64 = (u32::MAX).into();
-    r+=1;// r=2^{32}
+    let i: u8 = 32; // i is the power of 2 for which we take r=2^i. // i should be chosen so that we it is less than 128, since u128 is the largest usgined type in Rust
+    let r = 1u64 << i; // the operator << is left shift, which multiplies by powers of 2. That's why r=1u64 << 32 is 2³² // r could be felixable, ranging from 2 to 2^127, but r>n by assumption
     
     
     //calculating r_inverse mod n
@@ -64,13 +64,13 @@ fn main(){
     //println!("r^-1={r_inverse}, k={k}"); // r^-1=3435973833,    k=3435973837
     
     
-    let mut a: u64 = 123698745; //choose any integer in range 0 -- 2^{32}-1 for both a and b
+    let mut a: u64 = 123698745; //choose any integer in range 0 -- r-1 for both a and b
     let mut b: u64 = 4294967295 - 3658921736;
     // Calculating the montgomery_form for a and b
     a=a*r%n;
     b=b*r%n; // we get a=618493725, b=3180227795
     //println!("a_bar * b_bar={}",a*b);
-    let c=reduction(reduction(a*b, k, r, n), k, r, n);
+    let c=reduction(reduction(a*b, k, n), k, n); // the two sequential reductions mentioned above
     println!("a*b%n={c}");
     
 }
@@ -104,10 +104,10 @@ fn gcd_extended(a: i128, b: i128, g: i128, u: i128, x: i128, y:i128) -> (i128, i
 }
 
 
-fn reduction(x: u64, k: u64, r: u64, n: u64) -> u64 {
-    let s= (x%r)*k%r;
-    let t= x+s*n;
-    let u=t/r;
-    if u < n {return u}
-    return u-n
+fn reduction(x: u64, k: u64, n: u64) -> u64 {
+    let s = (x as u32).wrapping_mul(k as u32) as u64; // (x mod 2^32)*(k mod 2^32) mod 2^32 // wrapping_mul() is multiplication with wrapping semantics — meaning that if the result overflows the integer type’s range, it wraps around using two’s complement rules instead of panicking or saturating. 
+    let t = x as u128 + (s as u128) * (n as u128);           // t < 2rn < 2^65
+    let u = (t >> 32) as u64;                                // exact division by r // >> is the right-shift operator. t >> 32 moves all the bits of t 32 places to the right and discards the 32 bits that fall off the end. In numbers, that's floor(t / 2³²). It's the binary version of dropping the last three digits of a decimal number to divide by 1000.
+                                                            // In the algorithm, we showed that t is a multiple of r, so its low 32 bits are all zero. That means t >> 32 is exactly t/r, with nothing lost to the floor. This is the "division by r is just a right shift" step, which is why r is chosen to be a power of 2.
+    if u < n { u } else { u - n }
 }
