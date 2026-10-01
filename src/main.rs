@@ -1,10 +1,10 @@
-// This is Montgomery Multiplication: The aim is to calculate the product a.b%p for two integers a and b modulo p, where p is a large prime. 
+// This is Montgomery Multiplication: The aim is to calculate the product a.b%p for two integers a and b modulo p, where p is a large prime.
 // Why: It is costly to apply %p in the code
-// finding the Montogomery representations of a and b with respect to an integer r>p is usually helpful in calculating a.b%p. 
+// finding the Montogomery representations of a and b with respect to an integer r>p is usually helpful in calculating a.b%p.
 // The following link provide a good explanation to the algorithm:   https://www.nayuki.io/page/montgomery-reduction-algorithm
 
-// For a single multiplication, Montgomery is inferior to modular multiplication. 
-// But for a chain of multiplications, such as in modular exponentiation, we transform the input numbers into Montgomery form, 
+// For a single multiplication, Montgomery is inferior to modular multiplication.
+// But for a chain of multiplications, such as in modular exponentiation, we transform the input numbers into Montgomery form,
 // perform numerous multiplications, and transform back to standard numbers at the end.
 
 //**Detailed algorithm**
@@ -47,67 +47,59 @@
 
 // This completes the explanation and proof of the Montgomery reduction algorithm.
 
-
-
-
-
-
-fn main(){
+fn main() {
     let n: u64 = 4294967291; // largest prime less than 2^{32}-1
     let i: u8 = 32; // i is the power of 2 for which we take r=2^i. // i should be chosen so that we it is less than 128, since u128 is the largest usgined type in Rust
     let r = 1u64 << i; // the operator << is left shift, which multiplies by powers of 2. That's why r=1u64 << 32 is 2³² // r could be felixable, ranging from 2 to 2^127, but r>n by assumption
-    
-    
+
     //calculating r_inverse mod n
-    let r_inverse= modular_inverse(r,n);
-    let k=(r*r_inverse-1)/n;
+    let r_inverse = modular_inverse(r, n);
+    let k = (r * r_inverse - 1) / n;
     //println!("r^-1={r_inverse}, k={k}"); // r^-1=3435973833,    k=3435973837
-    
-    
+
     let mut a: u64 = 123698745; //choose any integer in range 0 -- r-1 for both a and b
     let mut b: u64 = 4294967295 - 3658921736;
     // Calculating the montgomery_form for a and b
-    a=a*r%n;
-    b=b*r%n; // we get a=618493725, b=3180227795
+    a = a * r % n;
+    b = b * r % n; // we get a=618493725, b=3180227795
     //println!("a_bar * b_bar={}",a*b);
-    let c=reduction(reduction(a*b, k, n), k, n); // the two sequential reductions mentioned above
+    let c = reduction(reduction(a * b, k, n), k, n); // the two sequential reductions mentioned above
     println!("a*b%n={c}");
-    
 }
 
-
-fn modular_inverse(r: u64, n: u64) -> u64{
-    let a: i128 =r as i128;
-    let b: i128=n as i128;
-    let u: i128 =1;
-    let g: i128 =a;
-    let x: i128=0; 
-    let y: i128 =b;
-    let mut r_inverse= gcd_extended(a,b,g,u,x,y).1;
+fn modular_inverse(r: u64, n: u64) -> u64 {
+    let a: i128 = r as i128;
+    let b: i128 = n as i128;
+    let u: i128 = 1;
+    let g: i128 = a;
+    let x: i128 = 0;
+    let y: i128 = b;
+    let mut r_inverse = gcd_extended(a, b, g, u, x, y).1;
     if r_inverse < 0 {
-        r_inverse+=n as i128;
+        r_inverse += n as i128;
     }
-    let r_inverse=r_inverse as u64;
-    return r_inverse
+    let r_inverse = r_inverse as u64;
+    r_inverse
 }
 
-fn gcd_extended(a: i128, b: i128, g: i128, u: i128, x: i128, y:i128) -> (i128, i128, i128){
-    if y ==0 {return (g,u,(g-a*u)/b)}
-    let q= g/y as i128;
-    let t= g-q*y;
-    let s =u-q*x;
-    let u =x;
-    let g =y; 
-    let x =s;
-    let y =t;
-    return gcd_extended(a,b,g,u,x,y)
+fn gcd_extended(a: i128, b: i128, g: i128, u: i128, x: i128, y: i128) -> (i128, i128, i128) {
+    if y == 0 {
+        return (g, u, (g - a * u) / b);
+    }
+    let q = g / y as i128;
+    let t = g - q * y;
+    let s = u - q * x;
+    let u = x;
+    let g = y;
+    let x = s;
+    let y = t;
+    gcd_extended(a, b, g, u, x, y)
 }
-
 
 fn reduction(x: u64, k: u64, n: u64) -> u64 {
     let s = (x as u32).wrapping_mul(k as u32) as u64; // (x mod 2^32)*(k mod 2^32) mod 2^32 // wrapping_mul() is multiplication with wrapping semantics — meaning that if the result overflows the integer type’s range, it wraps around using two’s complement rules instead of panicking or saturating. 
-    let t = x as u128 + (s as u128) * (n as u128);           // t < 2rn < 2^65
-    let u = (t >> 32) as u64;                                // exact division by r // >> is the right-shift operator. t >> 32 moves all the bits of t 32 places to the right and discards the 32 bits that fall off the end. In numbers, that's floor(t / 2³²). It's the binary version of dropping the last three digits of a decimal number to divide by 1000.
-                                                            // In the algorithm, we showed that t is a multiple of r, so its low 32 bits are all zero. That means t >> 32 is exactly t/r, with nothing lost to the floor. This is the "division by r is just a right shift" step, which is why r is chosen to be a power of 2.
+    let t = x as u128 + (s as u128) * (n as u128); // t < 2rn < 2^65
+    let u = (t >> 32) as u64; // exact division by r // >> is the right-shift operator. t >> 32 moves all the bits of t 32 places to the right and discards the 32 bits that fall off the end. In numbers, that's floor(t / 2³²). It's the binary version of dropping the last three digits of a decimal number to divide by 1000.
+    // In the algorithm, we showed that t is a multiple of r, so its low 32 bits are all zero. That means t >> 32 is exactly t/r, with nothing lost to the floor. This is the "division by r is just a right shift" step, which is why r is chosen to be a power of 2.
     if u < n { u } else { u - n }
 }
