@@ -6,7 +6,7 @@ The code is written in Rust
 // This is Montgomery Multiplication: The aim is to calculate the product a.b%p for two integers a and b modulo p, where p is a large prime. 
 // Why: It is costly to apply %p in the code
 // finding the Montogomery representations of a and b with respect to an integer r>p is usually helpful in calculating a.b%p. 
-// The following link provide a good explanation to the algorithm:   https://www.nayuki.io/page/montgomery-reduction-algorithm
+// The code and explanation are adapted from Nayuki's website: https://www.nayuki.io/page/montgomery-reduction-algorithm
 
 // For a single multiplication, Montgomery is inferior to modular multiplication. 
 // But for a chain of multiplications, such as in modular exponentiation, we transform the input numbers into Montgomery form, 
