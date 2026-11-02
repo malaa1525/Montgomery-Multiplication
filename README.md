@@ -1,3 +1,5 @@
+![CI](https://github.com/malaa1525/Montgomery-Multiplication/actions/workflows/ci.yml/badge.svg)
+
 # Montgomery-Multiplication
 This is a method for performing fast modular multiplication by transforming numbers into a special Montgomery form, avoiding costly division operations.
 
