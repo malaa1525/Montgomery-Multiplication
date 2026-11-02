@@ -48,23 +48,27 @@
 // This completes the explanation and proof of the Montgomery reduction algorithm.
 
 fn main() {
-    let n: u64 = 4294967291; // largest prime less than 2^{32}-1
-    let i: u8 = 32; // i is the power of 2 for which we take r=2^i. // i should be chosen so that we it is less than 128, since u128 is the largest usgined type in Rust
-    let r = 1u64 << i; // the operator << is left shift, which multiplies by powers of 2. That's why r=1u64 << 32 is 2³² // r could be felixable, ranging from 2 to 2^127, but r>n by assumption
+    let n: u64 = 4294967291; // largest prime less than 2^32
+    let (r, k) = setup(n);
+    let a: u64 = 123698745;
+    let b: u64 = 4294967295 - 3658921736;
+    let c = montgomery_mul(a, b, n, r, k);
+    println!("a*b%n={c}");
+}
 
-    //calculating r_inverse mod n
+// Precomputes r = 2^32 and k = (r * (r^{-1} mod n) - 1) / n for an odd modulus n < 2^32.
+fn setup(n: u64) -> (u64, u64) {
+    let r = 1u64 << 32;
     let r_inverse = modular_inverse(r, n);
     let k = (r * r_inverse - 1) / n;
-    //println!("r^-1={r_inverse}, k={k}"); // r^-1=3435973833,    k=3435973837
+    (r, k)
+}
 
-    let mut a: u64 = 123698745; //choose any integer in range 0 -- r-1 for both a and b
-    let mut b: u64 = 4294967295 - 3658921736;
-    // Calculating the montgomery_form for a and b
-    a = a * r % n;
-    b = b * r % n; // we get a=618493725, b=3180227795
-    //println!("a_bar * b_bar={}",a*b);
-    let c = reduction(reduction(a * b, k, n), k, n); // the two sequential reductions mentioned above
-    println!("a*b%n={c}");
+// Computes a*b mod n via Montgomery form, for 0 <= a, b < n.
+fn montgomery_mul(a: u64, b: u64, n: u64, r: u64, k: u64) -> u64 {
+    let a_bar = a * r % n; // a < 2^32, so a*r < 2^64
+    let b_bar = b * r % n;
+    reduction(reduction(a_bar * b_bar, k, n), k, n) // the two sequential reductions
 }
 
 fn modular_inverse(r: u64, n: u64) -> u64 {
@@ -102,4 +106,50 @@ fn reduction(x: u64, k: u64, n: u64) -> u64 {
     let u = (t >> 32) as u64; // exact division by r // >> is the right-shift operator. t >> 32 moves all the bits of t 32 places to the right and discards the 32 bits that fall off the end. In numbers, that's floor(t / 2³²). It's the binary version of dropping the last three digits of a decimal number to divide by 1000.
     // In the algorithm, we showed that t is a multiple of r, so its low 32 bits are all zero. That means t >> 32 is exactly t/r, with nothing lost to the floor. This is the "division by r is just a right shift" step, which is why r is chosen to be a power of 2.
     if u < n { u } else { u - n }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Reference answer computed directly in 128-bit arithmetic.
+    fn naive(a: u64, b: u64, n: u64) -> u64 {
+        ((a as u128 * b as u128) % n as u128) as u64
+    }
+
+    // Small xorshift generator, so the tests need no external crates.
+    fn next(state: &mut u64) -> u64 {
+        *state ^= *state << 13;
+        *state ^= *state >> 7;
+        *state ^= *state << 17;
+        *state
+    }
+
+    // Odd moduli below 2^32, prime and composite.
+    const MODULI: [u64; 5] = [4294967291, 4294967295, 1_000_000_007, 65537, 999_999_999];
+
+    #[test]
+    fn matches_naive_on_random_inputs() {
+        let mut state = 0x9E3779B97F4A7C15;
+        for &n in MODULI.iter() {
+            let (r, k) = setup(n);
+            for _ in 0..10_000 {
+                let a = next(&mut state) % n;
+                let b = next(&mut state) % n;
+                assert_eq!(montgomery_mul(a, b, n, r, k), naive(a, b, n), "a={a}, b={b}, n={n}");
+            }
+        }
+    }
+
+    #[test]
+    fn matches_naive_on_edge_cases() {
+        for &n in MODULI.iter() {
+            let (r, k) = setup(n);
+            for &a in [0, 1, 2, n - 2, n - 1].iter() {
+                for &b in [0, 1, 2, n - 2, n - 1].iter() {
+                    assert_eq!(montgomery_mul(a, b, n, r, k), naive(a, b, n), "a={a}, b={b}, n={n}");
+                }
+            }
+        }
+    }
 }
